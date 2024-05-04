@@ -23,7 +23,7 @@ public class Processor {
         }
     }
 
-    public List<TaskResponse> execute() throws InterruptedException {
+    public List<TaskResponse> execute() {
 //
 //        /**
 //         *Sequential execution
@@ -45,19 +45,25 @@ public class Processor {
 
         List<TaskResponse> taskResponses = new ArrayList<>();
 
-        // Process tasks in parallel based on user and task type
-        groupedTasks.values().parallelStream().forEach(taskTypeMap -> taskTypeMap.values().forEach(userTasks -> userTasks.forEach(taskRequest -> {
-            System.out.println("Starting Task " + taskRequest.getId());
-            Task task = new Task(taskRequest);
-            TaskResponse response;
-            try {
-                response = task.run();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+        groupedTasks.entrySet().parallelStream().forEach(userEntry -> userEntry.getValue().entrySet().parallelStream().forEach(taskTypeEntry -> {
+            List<TaskRequest> tasks = taskTypeEntry.getValue();
+
+            for (TaskRequest taskRequest : tasks) {
+                System.out.println("Starting Task " + taskRequest.getId());
+                Task task = new Task(taskRequest);
+                TaskResponse response;
+                try {
+                    response = task.run();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                System.out.println("Completed Task " + response.getId() + " With Status " + response.getStatus());
+                synchronized (taskResponses) {
+                    taskResponses.add(response);
+                }
             }
-            System.out.println("Completed Task " + response.getId() + " with Status " + response.getStatus());
-            taskResponses.add(response);
-        })));
+        }));
+
 
         return taskResponses;
     }
